@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>提前还款计算器</title>
+    <style>
+      :root {
+        --bg: #0b1020;
+        --card: rgba(255, 255, 255, 0.08);
+        --card2: rgba(255, 255, 255, 0.06);
+        --text: rgba(255, 255, 255, 0.92);
+        --muted: rgba(255, 255, 255, 0.72);
+        --accent: #68d391;
+        --danger: #fc8181;
+        --border: rgba(255, 255, 255, 0.14);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        color: var(--text);
+        background:
+          radial-gradient(1200px 600px at 10% 10%, rgba(104, 211, 145, 0.22), transparent 55%),
+          radial-gradient(900px 500px at 90% 20%, rgba(99, 102, 241, 0.18), transparent 50%),
+          radial-gradient(900px 700px at 60% 90%, rgba(236, 72, 153, 0.14), transparent 55%),
+          var(--bg);
+      }
+      .wrap { max-width: 980px; margin: 0 auto; padding: 28px 18px 52px; }
+      h1 { margin: 0 0 10px; font-size: 26px; letter-spacing: 0.2px; }
+      p { margin: 0 0 18px; color: var(--muted); line-height: 1.55; }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+      .card {
+        background: linear-gradient(180deg, var(--card), var(--card2));
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 16px;
+        backdrop-filter: blur(10px);
+      }
+      .card h2 { margin: 0 0 10px; font-size: 16px; color: rgba(255,255,255,0.9); }
+      .row { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 12px 0; }
+      .row2 { display: grid; grid-template-columns: 1fr; gap: 10px; }
+      @media (min-width: 900px) {
+        .row2 { grid-template-columns: 1fr 1fr; }
+      }
+      .tabs { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+      .tab {
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        background: rgba(255, 255, 255, 0.04);
+        color: rgba(255, 255, 255, 0.86);
+        padding: 10px 12px;
+        border-radius: 999px;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .tab[aria-selected="true"] {
+        border-color: rgba(104, 211, 145, 0.55);
+        background: rgba(104, 211, 145, 0.16);
+        color: rgba(255, 255, 255, 0.92);
+      }
+      label { display: block; font-size: 12px; color: var(--muted); margin: 0 0 6px; }
+      input, select {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(10, 15, 30, 0.55);
+        color: var(--text);
+        outline: none;
+      }
+      input:focus, select:focus { border-color: rgba(104, 211, 145, 0.55); }
+      .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+      .actions.compact { margin-top: 12px; justify-content: flex-start; }
+      button {
+        border: 1px solid rgba(104, 211, 145, 0.55);
+        background: rgba(104, 211, 145, 0.15);
+        color: var(--text);
+        padding: 10px 12px;
+        border-radius: 12px;
+        cursor: pointer;
+      }
+      button:hover { background: rgba(104, 211, 145, 0.22); }
+      .hint { font-size: 12px; color: var(--muted); margin-top: 10px; }
+      details { border-top: 1px solid rgba(255,255,255,0.10); margin-top: 12px; padding-top: 10px; }
+      summary { cursor: pointer; color: rgba(255,255,255,0.84); font-size: 13px; user-select: none; }
+      summary::-webkit-details-marker { display: none; }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.04);
+        color: rgba(255, 255, 255, 0.86);
+        font-size: 12px;
+      }
+      table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        overflow: hidden;
+        border-radius: 14px;
+        border: 1px solid var(--border);
+      }
+      th, td {
+        padding: 10px 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        text-align: left;
+        font-size: 14px;
+      }
+      th { color: rgba(255,255,255,0.86); background: rgba(255,255,255,0.04); }
+      tr:last-child td { border-bottom: 0; }
+      .err { color: var(--danger); font-size: 13px; }
+      .ok { color: var(--accent); font-size: 13px; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+      .value-strong { color: rgba(255,255,255,0.92); font-weight: 650; }
+      .value-green { color: #86efac; font-weight: 650; }
+      .value-red { color: #fca5a5; font-weight: 750; }
+      .schedule {
+        max-height: 320px;
+        overflow: auto;
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        background: rgba(255,255,255,0.03);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>提前还款计算器</h1>
+      <p>输入“剩余本金 + 利率 + 剩余期数 + 提前还款日期/金额”，输出提前还款后的关键结果，并给出节省对比。<span class="pill">默认：等额本息</span> <span class="pill">期数不变，降低月供</span></p>
+
+      <div class="grid">
+        <div class="card">
+          <h2>输入</h2>
+          <div class="tabs" role="tablist" aria-label="策略切换">
+            <button class="tab" id="tabKeepTerm" role="tab" aria-selected="true" data-strategy="keep_term">期数不变，降低月供</button>
+            <button class="tab" id="tabKeepPayment" role="tab" aria-selected="false" data-strategy="keep_payment">月供不变，缩短期数</button>
+          </div>
+          <div class="row2">
+            <div>
+              <label>剩余本金 (元)</label>
+              <input id="remainingPrincipal" value="772529" inputmode="decimal" />
+            </div>
+            <div>
+              <label>年化利率 (%)</label>
+              <input id="annualRate" value="3.2" inputmode="decimal" placeholder="例如 3.2 或 0.032" />
+            </div>
+            <div>
+              <label>剩余期数 (月)</label>
+              <input id="remainingMonths" value="296" inputmode="numeric" />
+            </div>
+            <div>
+              <label>提前还款日期 (YYYY-MM-DD)</label>
+              <input id="prepayDate" value="2026-03-31" inputmode="numeric" />
+            </div>
+            <div>
+              <label>还款方式</label>
+              <select id="method">
+                <option value="annuity" selected>等额本息</option>
+                <option value="equal_principal">等额本金</option>
+              </select>
+            </div>
+            <div>
+              <label>提前还款金额 (元)</label>
+              <input id="prepayAmount" value="100000" inputmode="decimal" />
+            </div>
+          </div>
+          <div id="currentPaymentWrap" style="margin-top: 12px; display:none;">
+            <label>当前月供 (元)</label>
+            <input id="currentPayment" value="3777" inputmode="decimal" placeholder="例如 3777" />
+            <div class="hint">“月供不变，缩短期数”模式需要填写当前月供。</div>
+          </div>
+          <div class="actions compact">
+            <button id="calcBtn">计算</button>
+            <button id="resetBtn" type="button">重置为示例</button>
+          </div>
+          <div class="hint">金额按“整数元四舍五入”展示，并使用千分位分隔；对比口径为同一日期下“不提前还 vs 提前还”。</div>
+        </div>
+
+        <div class="card">
+          <h2>结果</h2>
+          <div id="msg" class="hint"></div>
+
+          <div id="error" class="err" style="display:none; margin-top: 10px;"></div>
+
+          <div class="row2" style="margin-top: 12px;">
+            <div class="card" style="padding: 12px;">
+              <h2 style="margin:0 0 10px; font-size: 14px;">提前还款后</h2>
+              <table>
+                <thead>
+                  <tr><th>指标</th><th>数值(元)</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>月供</td><td class="mono value-red" id="outPayment">-</td></tr>
+                  <tr id="outMonthsRow" style="display:none;"><td>剩余期数(月)</td><td class="mono value-strong" id="outMonths">-</td></tr>
+                  <tr><td>剩余本金</td><td class="mono" id="outPrincipal">-</td></tr>
+                  <tr><td>剩余利息 (未来合计)</td><td class="mono" id="outInterest">-</td></tr>
+                  <tr><td>剩余本息总额 (未来合计)</td><td class="mono" id="outTotal">-</td></tr>
+                </tbody>
+              </table>
+              <details id="scheduleWrap" style="margin-top:12px; display:none;">
+                <summary>查看等额本金每月还款金额</summary>
+                <div class="hint">列表较长，向下滚动查看。</div>
+                <div class="schedule" style="margin-top:10px;">
+                  <table>
+                    <thead>
+                      <tr><th>期数</th><th>月供(元)</th><th>本金(元)</th><th>利息(元)</th><th>剩余本金(元)</th></tr>
+                    </thead>
+                    <tbody id="scheduleBody"></tbody>
+                  </table>
+                </div>
+              </details>
+            </div>
+            <div class="card" style="padding: 12px;">
+              <h2 style="margin:0 0 10px; font-size: 14px;">节省对比</h2>
+              <table>
+                <thead>
+                  <tr><th>指标</th><th>数值(元)</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>月供减少</td><td class="mono value-green" id="outPaymentSaved">-</td></tr>
+                  <tr><td>剩余利息减少</td><td class="mono value-green" id="outInterestSaved">-</td></tr>
+                </tbody>
+              </table>
+              <div class="hint">对比口径：同一“提前还款日期”下，不提前还 vs 提前还。</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // All money values are rounded to integer yuan (half-up).
+      function roundYuan(x) {
+        // Math.round is half-away-from-zero; for positive money it matches half-up.
+        return Math.round(x);
+      }
+
+      const yuanFmt = new Intl.NumberFormat("zh-CN", {
+        maximumFractionDigits: 0,
+        minimumFractionDigits: 0,
+        useGrouping: true,
+      });
+
+      function fmtYuan(x) {
+        if (!Number.isFinite(x)) return "-";
+        return yuanFmt.format(roundYuan(x));
+      }
+
+      function annuityPayment(P, annualRate, n) {
+        if (n <= 0 || P <= 0) return 0;
+        const r = annualRate / 12;
+        if (r === 0) return roundYuan(P / n);
+        const pow = Math.pow(1 + r, n);
+        return roundYuan(P * r * pow / (pow - 1));
+      }
+
+      function simulateAnnuity(P, annualRate, n, payment, stopWhenPaid) {
+        const r = annualRate / 12;
+        let bal = roundYuan(P);
+        const rows = [];
+        for (let i = 1; i <= n; i++) {
+          if (bal <= 0) {
+            if (stopWhenPaid) break;
+            rows.push({ i, payment: 0, principal: 0, interest: 0, remaining: 0 });
+            continue;
+          }
+          const interest = roundYuan(bal * r);
+          let principal = roundYuan(payment - interest);
+          let pmt = payment;
+          if (principal > bal) {
+            principal = bal;
+            pmt = roundYuan(principal + interest);
+          }
+          bal = roundYuan(bal - principal);
+          rows.push({ i, payment: pmt, principal, interest, remaining: bal });
+          if (stopWhenPaid && bal <= 0) break;
+        }
+        return rows;
+      }
+
+      function simulateEqualPrincipal(P, annualRate, n) {
+        const r = annualRate / 12;
+        let bal = roundYuan(P);
+        const fixedPrincipal = roundYuan(P / n);
+        const rows = [];
+        for (let i = 1; i <= n; i++) {
+          if (bal <= 0) break;
+          const interest = roundYuan(bal * r);
+          const principal = fixedPrincipal <= bal ? fixedPrincipal : bal;
+          const payment = roundYuan(principal + interest);
+          bal = roundYuan(bal - principal);
+          rows.push({ i, payment, principal: roundYuan(principal), interest, remaining: bal });
+        }
+        return rows;
+      }
+
+      function summarize(rows) {
+        let total = 0, totalInterest = 0;
+        let months = 0;
+        for (const r of rows) {
+          months = r.i;
+          total = roundYuan(total + r.payment);
+          totalInterest = roundYuan(totalInterest + r.interest);
+        }
+        return { total, totalInterest, months };
+      }
+
+      function setError(msg) {
+        const el = document.getElementById("error");
+        el.style.display = msg ? "block" : "none";
+        el.textContent = msg || "";
+      }
+
+      function setOut(id, v) {
+        document.getElementById(id).textContent = v;
+      }
+
+      function parseISODate(s) {
+        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s).trim());
+        if (!m) return null;
+        const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+        if (!(y > 1900 && mo >= 1 && mo <= 12 && d >= 1 && d <= 31)) return null;
+        return { y, mo, d };
+      }
+
+      function parseAnnualRate(s) {
+        const raw = String(s).trim();
+        if (!raw) return NaN;
+        const cleaned = raw.endsWith("%") ? raw.slice(0, -1).trim() : raw;
+        const v = Number(cleaned);
+        if (!Number.isFinite(v)) return NaN;
+        // Allow both 3.2 (percent) and 0.032 (ratio).
+        return v > 1 ? (v / 100) : v;
+      }
+
+      let activeStrategy = "keep_term";
+
+      function setStrategy(next) {
+        activeStrategy = next;
+        document.getElementById("tabKeepTerm").setAttribute("aria-selected", next === "keep_term" ? "true" : "false");
+        document.getElementById("tabKeepPayment").setAttribute("aria-selected", next === "keep_payment" ? "true" : "false");
+        document.getElementById("currentPaymentWrap").style.display = next === "keep_payment" ? "block" : "none";
+        document.getElementById("outMonthsRow").style.display = "none";
+      }
+
+      function resetOutputs() {
+        setOut("outPayment", "-");
+        setOut("outMonths", "-");
+        setOut("outPrincipal", "-");
+        setOut("outInterest", "-");
+        setOut("outTotal", "-");
+        setOut("outPaymentSaved", "-");
+        setOut("outInterestSaved", "-");
+        document.getElementById("outMonthsRow").style.display = "none";
+        document.getElementById("scheduleWrap").style.display = "none";
+        document.getElementById("scheduleBody").innerHTML = "";
+      }
+
+      function calc() {
+        setError("");
+        const prepayDate = parseISODate(document.getElementById("prepayDate").value);
+        const P0 = Number(document.getElementById("remainingPrincipal").value);
+        const annualRate = parseAnnualRate(document.getElementById("annualRate").value);
+        const n = Number(document.getElementById("remainingMonths").value);
+        const method = document.getElementById("method").value;
+        const prepay = Number(document.getElementById("prepayAmount").value);
+        const strategy = activeStrategy;
+        const currentPayment = Number(document.getElementById("currentPayment").value);
+
+        if (!prepayDate) return setError("提前还款日期格式需要是 YYYY-MM-DD");
+        if (!(P0 > 0)) return setError("剩余本金需要 > 0");
+        if (!(annualRate >= 0)) return setError("年化利率需要 >= 0（例如 3.2 或 0.032）");
+        if (!(n > 0 && Number.isFinite(n))) return setError("剩余期数需要是正整数");
+        if (!(prepay >= 0)) return setError("提前还款金额需要 >= 0");
+        resetOutputs();
+
+        // Simplified UI: treat prepay as occurring at the snapshot boundary; no mid-cycle interest settlement.
+        const P = roundYuan(P0);
+        const monthsLeft = n;
+
+        let P1 = roundYuan(P - prepay);
+        if (P1 < 0) P1 = 0;
+
+        if (P1 === 0) {
+          setOut("outPayment", "0");
+          setOut("outPrincipal", "0");
+          setOut("outInterest", "0");
+          setOut("outTotal", "0");
+          setOut("outInterestSaved", "-");
+          setOut("outPaymentSaved", "-");
+          document.getElementById("msg").innerHTML = "<span class='ok'>已结清</span>";
+          return;
+        }
+
+        let rows = [];
+        let monthlyPayment = 0;
+        let baselineInterest = 0, baselineTotal = 0, baselinePayment = 0;
+
+        if (method === "equal_principal") {
+          const baseRows = simulateEqualPrincipal(P, annualRate, monthsLeft);
+          const baseSum = summarize(baseRows);
+          baselineInterest = baseSum.totalInterest;
+          baselineTotal = baseSum.total;
+          baselinePayment = baseRows.length ? baseRows[0].payment : 0;
+
+          rows = simulateEqualPrincipal(P1, annualRate, monthsLeft);
+          const s = summarize(rows);
+          monthlyPayment = rows.length ? rows[0].payment : 0;
+          setOut("outPayment", fmtYuan(monthlyPayment));
+          setOut("outPrincipal", fmtYuan(P1));
+          setOut("outInterest", fmtYuan(s.totalInterest));
+          setOut("outTotal", fmtYuan(s.total));
+          setOut("outPaymentSaved", fmtYuan(baselinePayment - monthlyPayment));
+          setOut("outInterestSaved", fmtYuan(baselineInterest - s.totalInterest));
+          const body = document.getElementById("scheduleBody");
+          body.innerHTML = rows
+            .map((r) => {
+              return `<tr><td class="mono">${r.i}</td><td class="mono">${fmtYuan(r.payment)}</td><td class="mono">${fmtYuan(r.principal)}</td><td class="mono">${fmtYuan(r.interest)}</td><td class="mono">${fmtYuan(r.remaining)}</td></tr>`;
+            })
+            .join("");
+          document.getElementById("scheduleWrap").style.display = "block";
+          document.getElementById("msg").innerHTML = "<span class='ok'>等额本金：月供逐月递减，已提供每月还款金额列表。</span>";
+          return;
+        }
+
+        // annuity
+        if (strategy === "keep_term") {
+          baselinePayment = annuityPayment(P, annualRate, monthsLeft);
+          const baseRows = simulateAnnuity(P, annualRate, monthsLeft, baselinePayment, false);
+          const baseSum = summarize(baseRows);
+          baselineInterest = baseSum.totalInterest;
+          baselineTotal = baseSum.total;
+
+          monthlyPayment = annuityPayment(P1, annualRate, monthsLeft);
+          rows = simulateAnnuity(P1, annualRate, monthsLeft, monthlyPayment, false);
+          const s = summarize(rows);
+          setOut("outPayment", fmtYuan(monthlyPayment));
+          setOut("outPrincipal", fmtYuan(P1));
+          setOut("outInterest", fmtYuan(s.totalInterest));
+          setOut("outTotal", fmtYuan(s.total));
+          setOut("outPaymentSaved", fmtYuan(baselinePayment - monthlyPayment));
+          setOut("outInterestSaved", fmtYuan(baselineInterest - s.totalInterest));
+          document.getElementById("msg").innerHTML = "<span class='ok'>期数不变，月供已重新计算。</span>";
+          return;
+        }
+
+        // keep_payment
+        if (!(currentPayment > 0)) return setError("“月供不变，缩短期数”需要填写当前月供（>0）");
+        baselinePayment = roundYuan(currentPayment);
+        const baseRows = simulateAnnuity(P, annualRate, monthsLeft * 2, baselinePayment, true);
+        const baseSum = summarize(baseRows);
+        baselineInterest = baseSum.totalInterest;
+        baselineTotal = baseSum.total;
+
+        monthlyPayment = baselinePayment;
+        rows = simulateAnnuity(P1, annualRate, monthsLeft * 2, monthlyPayment, true);
+        const s = summarize(rows);
+        setOut("outPayment", fmtYuan(monthlyPayment));
+        setOut("outPrincipal", fmtYuan(P1));
+        setOut("outInterest", fmtYuan(s.totalInterest));
+        setOut("outTotal", fmtYuan(s.total));
+        setOut("outPaymentSaved", fmtYuan(baselinePayment - monthlyPayment));
+        setOut("outInterestSaved", fmtYuan(baselineInterest - s.totalInterest));
+        document.getElementById("outMonthsRow").style.display = "";
+        setOut("outMonths", String(s.months));
+        document.getElementById("msg").innerHTML = "<span class='ok'>月供不变，期数已根据逐期整数元四舍五入规则模拟得到。</span>";
+      }
+
+      document.getElementById("calcBtn").addEventListener("click", calc);
+      document.getElementById("resetBtn").addEventListener("click", () => {
+        document.getElementById("remainingPrincipal").value = "772529";
+        document.getElementById("annualRate").value = "3.2";
+        document.getElementById("remainingMonths").value = "296";
+        document.getElementById("method").value = "annuity";
+        document.getElementById("prepayDate").value = "2026-03-31";
+        document.getElementById("prepayAmount").value = "100000";
+        setStrategy("keep_term");
+        document.getElementById("currentPayment").value = "3777";
+        setError("");
+        resetOutputs();
+        document.getElementById("msg").textContent = "";
+      });
+
+      document.getElementById("tabKeepTerm").addEventListener("click", (e) => {
+        e.preventDefault();
+        setStrategy("keep_term");
+        setError("");
+        resetOutputs();
+        document.getElementById("msg").textContent = "";
+      });
+      document.getElementById("tabKeepPayment").addEventListener("click", (e) => {
+        e.preventDefault();
+        setStrategy("keep_payment");
+        setError("");
+        resetOutputs();
+        document.getElementById("msg").textContent = "";
+      });
+
+      // Defaults
+      setStrategy("keep_term");
+    </script>
+  </body>
+</html>
